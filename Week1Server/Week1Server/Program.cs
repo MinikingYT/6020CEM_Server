@@ -12,14 +12,12 @@ namespace Week1Server
 {
     internal class Program
     {
-
+        static Dictionary<int, byte[]> gameState = new Dictionary<int, byte[]>(); //initialise this at the start of the program
         static Socket newsock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp); //make a socket using UDP. The parameters passed are enums used by the constructor of Socket to configure the socket.
         static IPEndPoint[] sender = new IPEndPoint[30];
-        static EndPoint[] Remote = new EndPoint[30];
-
+        static List<EndPoint> Remote = new List<EndPoint>();
         static int lastAssignedGlobalID = 0; //I arbitrarily start at 12 so it’s easy to see if it’s working 
 
-        static string playerInfo = "";
         static void Main(string[] args)
         {
             initializeServer();
@@ -29,11 +27,23 @@ namespace Week1Server
             Thread thr2 = new Thread(KeyCheker);
             Thread thr3 = new Thread(ReceiveData);
             Thread thr4 = new Thread(checkConnections);
-            
+            Thread thr5 = new Thread(alll);
+
             thr1.Start();
             thr2.Start();
             thr3.Start();
             thr4.Start();
+            thr5.Start();
+        }
+
+        static void alll()
+        {
+            while (true)
+            {
+                Console.WriteLine("hello");
+
+                Thread.Sleep(3000);
+            }
         }
 
 
@@ -41,7 +51,7 @@ namespace Week1Server
         {
             //task 1
             //10.1.162.32
-            IPEndPoint ipep = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9050); //our server IP. This is set to local (127.0.0.1) on socket 9050. If 9050 is firewalled, you might want to try another!
+            IPEndPoint ipep = new IPEndPoint(IPAddress.Parse("10.1.229.232"), 9050); //our server IP. This is set to local (127.0.0.1) on socket 9050. If 9050 is firewalled, you might want to try another!
 
 
             newsock.Bind(ipep); //bind the socket to our given IP
@@ -56,18 +66,31 @@ namespace Week1Server
 
             while (true)
             {
-                for (int i = 0; i < Remote.Length; i++)
+                for (int i = 0; i < Remote.Count; i++)
                 {
+
+                    //sender[i] = (IPEndPoint)(Remote[i]);
+
+
+                    //if ()
                     if (Remote[i] != null)
                     {
+
+                        foreach(KeyValuePair<int, byte[]> kvp in gameState.ToList())
+                        {
+                            newsock.SendTo(kvp.Value, kvp.Value.Length, SocketFlags.None, Remote[i]);
+                        }
+
+
                         //TimeSpan currentTime = DateTime.Now.TimeOfDay;
-                        data = new byte[1024];
-                        data = Encoding.ASCII.GetBytes(playerInfo); //remember we need to convert anything to bytes to send it
-                        newsock.SendTo(data, data.Length, SocketFlags.None, Remote[i]);//send the bytes for the ‘hi’ string to the Remote that just connected. First parameter is the data, 2nd is packet size, 3rd is any flags we want, and 4th is destination client.
-                        
+                        //data = new byte[1024];
+                        //data = Encoding.ASCII.GetBytes(playerInfo); //remember we need to convert anything to bytes to send it
+                        //newsock.SendTo(data, data.Length, SocketFlags.None, Remote[i]);//send the bytes for the ‘hi’ string to the Remote that just connected. First parameter is the data, 2nd is packet size, 3rd is any flags we want, and 4th is destination client.
+
                     }
 
                 }
+
 
             }
             //newsock.SendTo(data, data.Length, SocketFlags.None, newRemote); //send the bytes for the ‘hi’ string to the Remote that just connected. First parameter is the data, 2nd is packet size, 3rd is any flags we want, and 4th is destination client.
@@ -82,32 +105,17 @@ namespace Week1Server
             int recv;
 
             //task 2
-            int pos = -1;
+            //int pos = -1;
 
 
             //ConsoleKey keyCheck;
             while (true)
             {
-
-                //sender[pos] = new IPEndPoint(IPAddress.Any, 0);
-                //if (Remote[pos] == null)
-                //{
-                //    Remote[pos] = (EndPoint)(sender[pos]);
-                //}
-
-
-                //IPEndPoint newSender = new IPEndPoint(IPAddress.Any, 0);
-                //EndPoint newRemote = Remote[pos];
-
-                //if (Remote[pos] != null) { 
-                //    newRemote = Remote[pos];
-                //}
-
                 EndPoint newRemote = new IPEndPoint(IPAddress.Any, 0);
                 
                 data = new byte[1024];
                  recv = newsock.ReceiveFrom(data, ref newRemote);
-                
+
                  //recv is now a byte array containing whatever just arrived from the client
                 //EndPoint newRemote = Remote[pos];
                 //Console.WriteLine("Message received from " + newRemote.ToString()); //this will show the client’s unique id
@@ -116,15 +124,16 @@ namespace Week1Server
                 //playerInfo = Encoding.ASCII.GetString(data, 0, recv);
                 //Console.WriteLine(playerInfo);
                 if(text == "FirstEntrance") {
-                    //we store a message to send to the client
+                    //we store a message to send to the client 
                     string hi = "Yep, you just connected!";
                     Console.WriteLine("New connection with the ip " + newRemote.ToString());
                     //remember we need to convert anything to bytes to send it
                     data = Encoding.ASCII.GetBytes(hi);
                     //we send the information to the client, so that the client knows that he just connected
                     newsock.SendTo(data, data.Length, SocketFlags.None, newRemote);
-                    pos = pos + 1; // read through all remote.lenght and if null remove
-                    Remote[pos] = newRemote;
+                    
+                    //pos = pos + 1; // read through all remote.lenght and if null remove
+                    Remote.Add(newRemote);
 
                 }
                 else if (text.Contains("I need a UID for local object:"))
@@ -137,19 +146,27 @@ namespace Week1Server
                     //assign the ID
                     string returnVal = ("Assigned UID:" + localObjectNumber + ";" + lastAssignedGlobalID++);
                     Console.WriteLine(returnVal);
-                    playerInfo = "Pinged from server";
+                    //playerInfo = "Pinged from server";
                     newsock.SendTo(Encoding.ASCII.GetBytes(returnVal), Encoding.ASCII.GetBytes(returnVal).Length, SocketFlags.None, newRemote);
                     
                     //pos = pos + 1; // read through all remote.lenght and if null remove
                     //Remote[pos] = newRemote;
 
                 }
-                else
+                else if (text.Contains(";"))//
                 {
-                    //SendData();
-                    //string hi = "Tas Ligado";
-                    //data = Encoding.ASCII.GetBytes(hi); //remember we need to convert anything to bytes to send it
-                    //newsock.SendTo(data, data.Length, SocketFlags.None, newRemote); //send the bytes for the ‘hi’ string to the Remote that just connected. First parameter is the data, 2nd is packet size, 3rd is any flags we want, and 4th is destination client.
+                    //get the global id from the packet
+                    Console.WriteLine(text);
+                    string globalId = text.Substring(0, text.IndexOf(';'));
+                    int intId = Int32.Parse(globalId);
+                    if (gameState.ContainsKey(intId))
+                    { //if true, we're already tracking the object
+                        gameState[intId] = data; //data being the original bytes of the packet
+                    }
+                    else //the object is new to the game
+                    {
+                        gameState.Add(intId, data);
+                    }
 
                 }
 
@@ -191,7 +208,7 @@ namespace Week1Server
             int playerNumber = 0;
             while (true)
             {
-                for (int i = 0; i< Remote.Length; i++)
+                for (int i = 0; i< Remote.Count; i++)
                 {
                     if (Remote[i] != null)
                         playerNumber++;
