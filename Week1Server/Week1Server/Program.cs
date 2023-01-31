@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
-
+using System.Diagnostics;
 
 namespace Week1Server
 {
@@ -19,7 +19,7 @@ namespace Week1Server
 
         static int lastAssignedGlobalID = 0; //I arbitrarily start at 12 so it’s easy to see if it’s working 
 
-        static string playerInfo;
+        static string playerInfo = "";
         static void Main(string[] args)
         {
             initializeServer();
@@ -28,10 +28,12 @@ namespace Week1Server
             Thread thr1 = new Thread(SendData);
             Thread thr2 = new Thread(KeyCheker);
             Thread thr3 = new Thread(ReceiveData);
+            Thread thr4 = new Thread(checkConnections);
             
             thr1.Start();
             thr2.Start();
             thr3.Start();
+            thr4.Start();
         }
 
 
@@ -54,7 +56,7 @@ namespace Week1Server
 
             while (true)
             {
-                for (int i = 1; i < Remote.Length; i++)
+                for (int i = 0; i < Remote.Length; i++)
                 {
                     if (Remote[i] != null)
                     {
@@ -113,7 +115,19 @@ namespace Week1Server
                 string text = Encoding.ASCII.GetString(data, 0, recv); //and this will show the data
                 //playerInfo = Encoding.ASCII.GetString(data, 0, recv);
                 //Console.WriteLine(playerInfo);
-                if (text.Contains("I need a UID for local object:"))
+                if(text == "FirstEntrance") {
+                    //we store a message to send to the client
+                    string hi = "Yep, you just connected!";
+                    Console.WriteLine("New connection with the ip " + newRemote.ToString());
+                    //remember we need to convert anything to bytes to send it
+                    data = Encoding.ASCII.GetBytes(hi);
+                    //we send the information to the client, so that the client knows that he just connected
+                    newsock.SendTo(data, data.Length, SocketFlags.None, newRemote);
+                    pos = pos + 1; // read through all remote.lenght and if null remove
+                    Remote[pos] = newRemote;
+
+                }
+                else if (text.Contains("I need a UID for local object:"))
                 {
 
                     Console.WriteLine(text.Substring(text.IndexOf(':')));
@@ -125,8 +139,9 @@ namespace Week1Server
                     Console.WriteLine(returnVal);
                     playerInfo = "Pinged from server";
                     newsock.SendTo(Encoding.ASCII.GetBytes(returnVal), Encoding.ASCII.GetBytes(returnVal).Length, SocketFlags.None, newRemote);
-                    pos = pos + 1;
-                    Remote[pos] = newRemote;
+                    
+                    //pos = pos + 1; // read through all remote.lenght and if null remove
+                    //Remote[pos] = newRemote;
 
                 }
                 else
@@ -169,6 +184,24 @@ namespace Week1Server
                     return;
                 }
             }
+        }
+
+        static private void checkConnections()
+        {
+            int playerNumber = 0;
+            while (true)
+            {
+                for (int i = 0; i< Remote.Length; i++)
+                {
+                    if (Remote[i] != null)
+                        playerNumber++;
+                }
+                Console.WriteLine("Players Connected: " + playerNumber);
+                playerNumber = 0;
+
+                Thread.Sleep(5000);
+            }
+
         }
 
     }
