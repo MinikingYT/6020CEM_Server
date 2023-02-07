@@ -16,32 +16,29 @@ namespace Week1Server
         static Socket newsock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp); //make a socket using UDP. The parameters passed are enums used by the constructor of Socket to configure the socket.
         static IPEndPoint[] sender = new IPEndPoint[30];
         static List<EndPoint> Remote = new List<EndPoint>();
-        static int lastAssignedGlobalID = 0; //I arbitrarily start at 12 so it’s easy to see if it’s working 
+        static int lastAssignedGlobalID = 1; //I arbitrarily start at 12 so it’s easy to see if it’s working 
 
         static void Main(string[] args)
         {
             initializeServer();
 
 
-            Thread thr1 = new Thread(SendData);
+           // Thread thr1 = new Thread(SendData);
             Thread thr2 = new Thread(KeyCheker);
             Thread thr3 = new Thread(ReceiveData);
             Thread thr4 = new Thread(checkConnections);
 
-            thr1.Start();
+            //thr1.Start();
             thr2.Start();
             thr3.Start();
             thr4.Start();
         }
 
-       
-
-
         static void initializeServer()
         {
             //task 1
             //10.1.162.32
-            IPEndPoint ipep = new IPEndPoint(IPAddress.Parse("10.1.229.232"), 9050); //our server IP. This is set to local (127.0.0.1) on socket 9050. If 9050 is firewalled, you might want to try another!
+            IPEndPoint ipep = new IPEndPoint(IPAddress.Parse("10.1.241.204"), 9050); //our server IP. This is set to local (127.0.0.1) on socket 9050. If 9050 is firewalled, you might want to try another!
 
 
             newsock.Bind(ipep); //bind the socket to our given IP
@@ -54,8 +51,8 @@ namespace Week1Server
             
             
 
-            while (true)
-            {
+            //while (true)
+            //{
                 for (int i = 0; i < Remote.Count; i++)
                 {
 
@@ -82,7 +79,7 @@ namespace Week1Server
                 }
 
 
-            }
+           // }
             //newsock.SendTo(data, data.Length, SocketFlags.None, newRemote); //send the bytes for the ‘hi’ string to the Remote that just connected. First parameter is the data, 2nd is packet size, 3rd is any flags we want, and 4th is destination client.
 
         }
@@ -143,11 +140,12 @@ namespace Week1Server
                     //Remote[pos] = newRemote;
 
                 }
-                else if (text.Contains(";"))//
+                
+                else if (text.Contains("Object data;"))
                 {
                     //get the global id from the packet
                     Console.WriteLine(text);
-                    string globalId = text.Substring(0, text.IndexOf(';'));
+                    string globalId = text.Split(";")[1];
                     int intId = Int32.Parse(globalId);
                     if (gameState.ContainsKey(intId))
                     { //if true, we're already tracking the object
@@ -157,9 +155,8 @@ namespace Week1Server
                     {
                         gameState.Add(intId, data);
                     }
-
                 }
-
+                SendData();
 
 
                 //bool newConnect = false;
@@ -170,11 +167,11 @@ namespace Week1Server
                 //        newConnect = true;
                 //        break;
 
-                //    }
+                    //    }
 
-                //}
-                //if(!newConnect)
-                //    pos = pos + 1;
+                    //}
+                    //if(!newConnect)
+                    //    pos = pos + 1;
 
 
 
