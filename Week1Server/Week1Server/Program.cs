@@ -27,24 +27,14 @@ namespace Week1Server
             Thread thr2 = new Thread(KeyCheker);
             Thread thr3 = new Thread(ReceiveData);
             Thread thr4 = new Thread(checkConnections);
-            Thread thr5 = new Thread(alll);
 
             thr1.Start();
             thr2.Start();
             thr3.Start();
             thr4.Start();
-            thr5.Start();
         }
 
-        static void alll()
-        {
-            while (true)
-            {
-                Console.WriteLine("hello");
-
-                Thread.Sleep(3000);
-            }
-        }
+       
 
 
         static void initializeServer()
