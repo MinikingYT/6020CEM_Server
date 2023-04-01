@@ -38,7 +38,7 @@ namespace Week1Server
         {
             //task 1
             //10.1.162.32
-            IPEndPoint ipep = new IPEndPoint(IPAddress.Parse("10.1.241.204"), 9050); //our server IP. This is set to local (127.0.0.1) on socket 9050. If 9050 is firewalled, you might want to try another!
+            IPEndPoint ipep = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9050); //our server IP. This is set to local (127.0.0.1) on socket 9050. If 9050 is firewalled, you might want to try another!
 
 
             newsock.Bind(ipep); //bind the socket to our given IP
@@ -67,12 +67,6 @@ namespace Week1Server
                         {
                             newsock.SendTo(kvp.Value, kvp.Value.Length, SocketFlags.None, Remote[i]);
                         }
-
-
-                        //TimeSpan currentTime = DateTime.Now.TimeOfDay;
-                        //data = new byte[1024];
-                        //data = Encoding.ASCII.GetBytes(playerInfo); //remember we need to convert anything to bytes to send it
-                        //newsock.SendTo(data, data.Length, SocketFlags.None, Remote[i]);//send the bytes for the ‘hi’ string to the Remote that just connected. First parameter is the data, 2nd is packet size, 3rd is any flags we want, and 4th is destination client.
 
                     }
 
