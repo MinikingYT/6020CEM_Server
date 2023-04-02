@@ -12,6 +12,9 @@ namespace Week1Server
 {
     internal class Program
     {
+
+        static Dictionary<EndPoint, DateTime> clientHeartbeats = new Dictionary<EndPoint, DateTime>();
+
         static Dictionary<int, byte[]> gameState = new Dictionary<int, byte[]>(); //initialise this at the start of the program
         static Socket newsock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp); //make a socket using UDP. The parameters passed are enums used by the constructor of Socket to configure the socket.
         static IPEndPoint[] sender = new IPEndPoint[30];
@@ -27,11 +30,13 @@ namespace Week1Server
             Thread thr2 = new Thread(KeyCheker);
             Thread thr3 = new Thread(ReceiveData);
             Thread thr4 = new Thread(checkConnections);
-
+            Thread thr5 = new Thread(CheckDisconnectedClients);
+            
             //thr1.Start();
             thr2.Start();
             thr3.Start();
             thr4.Start();
+            thr5.Start();
         }
 
         static void initializeServer()
@@ -92,10 +97,12 @@ namespace Week1Server
             //ConsoleKey keyCheck;
             while (true)
             {
-                EndPoint newRemote = new IPEndPoint(IPAddress.Any, 0);
+               
+                    EndPoint newRemote = new IPEndPoint(IPAddress.Any, 0);
+
+                    data = new byte[1024];
+                    recv = newsock.ReceiveFrom(data, ref newRemote);
                 
-                data = new byte[1024];
-                 recv = newsock.ReceiveFrom(data, ref newRemote);
 
                  //recv is now a byte array containing whatever just arrived from the client
                 //EndPoint newRemote = Remote[pos];
@@ -150,23 +157,19 @@ namespace Week1Server
                         gameState.Add(intId, data);
                     }
                 }
+
+                else if (text.Contains("Heartbeat"))
+                {
+                    if (clientHeartbeats.ContainsKey(newRemote))
+                    {
+                        clientHeartbeats[newRemote] = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        clientHeartbeats.Add(newRemote, DateTime.UtcNow);
+                    }
+                }
                 SendData();
-
-
-                //bool newConnect = false;
-                //for (int i = 0; i < newRemoteList.Length; i++)
-                //{
-                //    if (newRemoteList[i] == Remote[i])
-                //    {
-                //        newConnect = true;
-                //        break;
-
-                    //    }
-
-                    //}
-                    //if(!newConnect)
-                    //    pos = pos + 1;
-
 
 
             }
@@ -200,6 +203,27 @@ namespace Week1Server
                 Thread.Sleep(5000);
             }
 
+        }
+
+        static private void CheckDisconnectedClients()
+        {
+            while (true)
+            {
+                DateTime currentTime = DateTime.UtcNow;
+
+                foreach (EndPoint client in Remote.ToArray())
+                {
+                    if (clientHeartbeats.ContainsKey(client) && (currentTime - clientHeartbeats[client]).TotalSeconds > 5)
+                    {
+                        // If the client hasn't sent a heartbeat in the last 10 seconds, consider it disconnected
+                        Console.WriteLine("Client disconnected: " + client.ToString());
+                        Remote.Remove(client);
+                        
+                        clientHeartbeats.Remove(client);
+                    }
+                }
+                Thread.Sleep(5000);
+            }
         }
 
     }
