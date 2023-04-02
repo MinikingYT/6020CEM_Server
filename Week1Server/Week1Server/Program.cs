@@ -12,9 +12,8 @@ namespace Week1Server
 {
     internal class Program
     {
-
+        static Dictionary<int, EndPoint> gameObjectOwners = new Dictionary<int, EndPoint>();
         static Dictionary<EndPoint, DateTime> clientHeartbeats = new Dictionary<EndPoint, DateTime>();
-
         static Dictionary<int, byte[]> gameState = new Dictionary<int, byte[]>(); //initialise this at the start of the program
         static Socket newsock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp); //make a socket using UDP. The parameters passed are enums used by the constructor of Socket to configure the socket.
         static IPEndPoint[] sender = new IPEndPoint[30];
@@ -136,7 +135,7 @@ namespace Week1Server
                     Console.WriteLine(returnVal);
                     //playerInfo = "Pinged from server";
                     newsock.SendTo(Encoding.ASCII.GetBytes(returnVal), Encoding.ASCII.GetBytes(returnVal).Length, SocketFlags.None, newRemote);
-                    
+                    gameObjectOwners[lastAssignedGlobalID - 1] = newRemote; //here we populate the dictionary to remove Objects with UIDS
                     //pos = pos + 1; // read through all remote.lenght and if null remove
                     //Remote[pos] = newRemote;
 
@@ -215,14 +214,36 @@ namespace Week1Server
                 {
                     if (clientHeartbeats.ContainsKey(client) && (currentTime - clientHeartbeats[client]).TotalSeconds > 5)
                     {
-                        // If the client hasn't sent a heartbeat in the last 10 seconds, consider it disconnected
                         Console.WriteLine("Client disconnected: " + client.ToString());
                         Remote.Remove(client);
-                        
+                        RemoveGameObjectsAssociatedWithClient(client);
                         clientHeartbeats.Remove(client);
                     }
                 }
                 Thread.Sleep(5000);
+            }
+        }
+
+
+        static private void RemoveGameObjectsAssociatedWithClient(EndPoint client)
+        {
+
+            List<int> gameObjectsToRemove = new List<int>();
+
+            //finds the game object associated with the disconnected client
+            foreach (var kvp in gameObjectOwners)
+            {
+                if (kvp.Value.Equals(client))
+                {
+                    gameObjectsToRemove.Add(kvp.Key);
+                }
+            }
+
+            //removes the game object
+            foreach (int gameObjectId in gameObjectsToRemove)
+            {
+                gameState.Remove(gameObjectId);
+                gameObjectOwners.Remove(gameObjectId);
             }
         }
 
