@@ -179,23 +179,33 @@ namespace Week1Server
                     float damageTaken = float.Parse(text.Split(';')[0].Substring(text.IndexOf(':') + 1).Trim());
                     int globalID = int.Parse(text.Split(';')[1].Trim());
 
-                    Console.WriteLine("ID: "+globalID);
-                    if (clientHealths.ContainsKey(newRemote))
+                    EndPoint damagedPlayerEndPoint = FindEndPointByGlobalId(globalID);
+
+                    if (damagedPlayerEndPoint != null)
                     {
-                        //if hp value alrady existed
-                        clientHealths[newRemote] = clientHealths[newRemote] - damageTaken;
+                        if (clientHealths.ContainsKey(damagedPlayerEndPoint))
+                        {
+                            // If hp value already existed
+                            clientHealths[damagedPlayerEndPoint] = clientHealths[damagedPlayerEndPoint] - damageTaken;
+                        }
+                        else
+                        {
+                            // If client didn't have hp yet
+                            float startingHP = 100.0f;
+                            clientHealths.Add(damagedPlayerEndPoint, startingHP);
+                            clientHealths[damagedPlayerEndPoint] = clientHealths[damagedPlayerEndPoint] - damageTaken;
+                        }
+
+                        //send to client new update
+                        string healthUpdateConfirmation = ("HealthUpdate: " + clientHealths[damagedPlayerEndPoint]);
+                        newsock.SendTo(Encoding.ASCII.GetBytes(healthUpdateConfirmation), Encoding.ASCII.GetBytes(healthUpdateConfirmation).Length, SocketFlags.None, damagedPlayerEndPoint);
                     }
                     else
                     {
-                        //if client didnt have hp yet
-                        float startingHP = 100.0f;
-                        clientHealths.Add(newRemote, startingHP);
-                        clientHealths[newRemote] = clientHealths[newRemote] - damageTaken;
+                        Console.WriteLine("Unable to find EndPoint for globalID: " + globalID);
                     }
 
-                    //send to client new update
-                    string healthUpdateConfirmation = $"HealthUpdate: {clientHealths[newRemote]}";
-                    newsock.SendTo(Encoding.ASCII.GetBytes(healthUpdateConfirmation), Encoding.ASCII.GetBytes(healthUpdateConfirmation).Length, SocketFlags.None, newRemote);
+
                 }
                     SendData();
 
@@ -213,6 +223,17 @@ namespace Week1Server
                     return;
                 }
             }
+        }
+
+
+        static private EndPoint FindEndPointByGlobalId(int globalID)
+        {
+            if (gameObjectOwners.ContainsKey(globalID))
+            {
+                return gameObjectOwners[globalID];
+            }
+
+            return null;
         }
 
         static private void checkConnections()
