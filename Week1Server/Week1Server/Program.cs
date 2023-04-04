@@ -26,15 +26,19 @@ namespace Week1Server
 
         static void Main(string[] args)
         {
+
+            //starting code that should only be run on the start of the server in this funtion
             initializeServer();
 
 
+            //all loops are separated in different threads so they can run simultaneosly
            // Thread thr1 = new Thread(SendData);
             Thread thr2 = new Thread(KeyCheker);
             Thread thr3 = new Thread(ReceiveData);
             Thread thr4 = new Thread(checkConnections);
             Thread thr5 = new Thread(CheckDisconnectedClients);
             
+
             //thr1.Start();
             thr2.Start();
             thr3.Start();
@@ -46,7 +50,7 @@ namespace Week1Server
         {
             //task 1
             //10.1.162.32
-            IPEndPoint ipep = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9050); //our server IP. This is set to local (127.0.0.1) on socket 9050. If 9050 is firewalled, you might want to try another!
+            IPEndPoint ipep = new IPEndPoint(IPAddress.Parse("25.13.185.212"), 9050); //our server IP. This is set to local (127.0.0.1) on socket 9050. If 9050 is firewalled, you might want to try another!
 
 
             newsock.Bind(ipep); //bind the socket to our given IP
@@ -56,34 +60,31 @@ namespace Week1Server
         static private void SendData()
         {
             byte[] data = new byte[1024];
-            
-            
+
+
 
             //while (true)
             //{
-                for (int i = 0; i < Remote.Count; i++)
+
+            //loops through all remots (all clients)
+            for (int i = 0; i < Remote.Count; i++)
+            {
+
+               
+
+
+                //if client exists send information
+                if (Remote[i] != null)
                 {
 
-                    //sender[i] = (IPEndPoint)(Remote[i]);
-
-
-                    //if ()
-                    if (Remote[i] != null)
+                    foreach (KeyValuePair<int, byte[]> kvp in gameState.ToList())
                     {
-
-                        foreach(KeyValuePair<int, byte[]> kvp in gameState.ToList())
-                        {
-                            newsock.SendTo(kvp.Value, kvp.Value.Length, SocketFlags.None, Remote[i]);
-                        }
-
+                        newsock.SendTo(kvp.Value, kvp.Value.Length, SocketFlags.None, Remote[i]);
                     }
 
                 }
 
-
-           // }
-            //newsock.SendTo(data, data.Length, SocketFlags.None, newRemote); //send the bytes for the ‘hi’ string to the Remote that just connected. First parameter is the data, 2nd is packet size, 3rd is any flags we want, and 4th is destination client.
-
+            }
         }
 
         static private void ReceiveData()
@@ -94,26 +95,21 @@ namespace Week1Server
             int recv;
 
             //task 2
-            //int pos = -1;
 
-
-            //ConsoleKey keyCheck;
+            //while the loop keeps going (server is running)
             while (true)
             {
-               
+               //new connection
                     EndPoint newRemote = new IPEndPoint(IPAddress.Any, 0);
 
+                //receive data
                     data = new byte[1024];
                     recv = newsock.ReceiveFrom(data, ref newRemote);
                 
-
-                 //recv is now a byte array containing whatever just arrived from the client
-                //EndPoint newRemote = Remote[pos];
-                //Console.WriteLine("Message received from " + newRemote.ToString()); //this will show the client’s unique id
-                //Console.WriteLine(Encoding.ASCII.GetString(data, 0, recv)); //and this will show the data
-                string text = Encoding.ASCII.GetString(data, 0, recv); //and this will show the data
-                //playerInfo = Encoding.ASCII.GetString(data, 0, recv);
-                //Console.WriteLine(playerInfo);
+                //here we receive the data in ascii and transfor it to string
+                string text = Encoding.ASCII.GetString(data, 0, recv); 
+               
+                //different if checks for different messages, so we can process the different requests from the clients, example: FirstEntrance is called the first time player joins the server
                 if(text == "FirstEntrance") {
                     //we store a message to send to the client 
                     string hi = "Yep, you just connected!";
@@ -163,6 +159,7 @@ namespace Week1Server
 
                 else if (text.Contains("Heartbeat"))
                 {
+                    //samething as objectdata, but for heartbeats
                     if (clientHeartbeats.ContainsKey(newRemote))
                     {
                         clientHeartbeats[newRemote] = DateTime.UtcNow;
@@ -179,10 +176,14 @@ namespace Week1Server
                     float damageTaken = float.Parse(text.Split(';')[0].Substring(text.IndexOf(':') + 1).Trim());
                     int globalID = int.Parse(text.Split(';')[1].Trim());
 
+                    //client who will take the damage
                     EndPoint damagedPlayerEndPoint = FindEndPointByGlobalId(globalID);
 
+                    //if client exists
                     if (damagedPlayerEndPoint != null)
                     {
+                        float startingHP = 100.0f;
+
                         if (clientHealths.ContainsKey(damagedPlayerEndPoint))
                         {
                             // If hp value already existed
@@ -191,10 +192,13 @@ namespace Week1Server
                         else
                         {
                             // If client didn't have hp yet
-                            float startingHP = 100.0f;
                             clientHealths.Add(damagedPlayerEndPoint, startingHP);
                             clientHealths[damagedPlayerEndPoint] = clientHealths[damagedPlayerEndPoint] - damageTaken;
                         }
+
+                        //check for cheats on hp
+                        CheckHPCheat(clientHealths[damagedPlayerEndPoint], startingHP, damagedPlayerEndPoint);
+
 
                         //send to client new update
                         string healthUpdateConfirmation = ("HealthUpdate: " + clientHealths[damagedPlayerEndPoint]);
@@ -206,12 +210,27 @@ namespace Week1Server
                     }
 
 
-                }
+                }//after recieving all data, send the new data back
                     SendData();
 
 
             }
         }
+
+
+        //when called checks if the current player hp is bigger then the starting hp, if it is, it disconnects the player
+        static void CheckHPCheat(float hp, float startingHP, EndPoint client)
+        {
+            if (hp > startingHP){
+                 Console.WriteLine("Client WAS CHEATING: " + client.ToString());
+                 Remote.Remove(client);
+                 RemoveGameObjectsAssociatedWithClient(client);
+                 clientHeartbeats.Remove(client);
+            }
+
+        }
+
+        //checks if esc is pressed and closes the server
         static private void KeyCheker()
         {
 
@@ -226,6 +245,7 @@ namespace Week1Server
         }
 
 
+        //gets a int that represents a global id and if it is inside the dictionary where all gameObjects are, returns it
         static private EndPoint FindEndPointByGlobalId(int globalID)
         {
             if (gameObjectOwners.ContainsKey(globalID))
@@ -236,6 +256,8 @@ namespace Week1Server
             return null;
         }
 
+
+        //code that says how many players are connected from time to time
         static private void checkConnections()
         {
             int playerNumber = 0;
@@ -254,14 +276,19 @@ namespace Week1Server
 
         }
 
+
+        //handles disconnecting players
         static private void CheckDisconnectedClients()
         {
             while (true)
             {
+                //gets the time right now
                 DateTime currentTime = DateTime.UtcNow;
 
+                //loops through all clients
                 foreach (EndPoint client in Remote.ToArray())
                 {
+                    //if the last heartbeat message sent by the client was sent over 5 seconds ago, the player disconncts
                     if (clientHeartbeats.ContainsKey(client) && (currentTime - clientHeartbeats[client]).TotalSeconds > 5)
                     {
                         Console.WriteLine("Client disconnected: " + client.ToString());
@@ -275,6 +302,7 @@ namespace Week1Server
         }
 
 
+        //further remove client info from dictionaries when heartbeat is not sent
         static private void RemoveGameObjectsAssociatedWithClient(EndPoint client)
         {
 
