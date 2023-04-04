@@ -19,6 +19,10 @@ namespace Week1Server
         static IPEndPoint[] sender = new IPEndPoint[30];
         static List<EndPoint> Remote = new List<EndPoint>();
         static int lastAssignedGlobalID = 1; //I arbitrarily start at 12 so it’s easy to see if it’s working 
+        static Dictionary<EndPoint, float> clientHealths = new Dictionary<EndPoint, float>();
+
+
+
 
         static void Main(string[] args)
         {
@@ -144,7 +148,7 @@ namespace Week1Server
                 else if (text.Contains("Object data;"))
                 {
                     //get the global id from the packet
-                    Console.WriteLine(text);
+                   // Console.WriteLine(text);
                     string globalId = text.Split(";")[1];
                     int intId = Int32.Parse(globalId);
                     if (gameState.ContainsKey(intId))
@@ -168,7 +172,32 @@ namespace Week1Server
                         clientHeartbeats.Add(newRemote, DateTime.UtcNow);
                     }
                 }
-                SendData();
+                else if (text.Contains("causeDamage:"))
+                {
+                    Console.WriteLine(text);
+                    //the damage received from the server
+                    float damageTaken = float.Parse(text.Split(';')[0].Substring(text.IndexOf(':') + 1).Trim());
+                    int globalID = int.Parse(text.Split(';')[1].Trim());
+
+                    Console.WriteLine("ID: "+globalID);
+                    if (clientHealths.ContainsKey(newRemote))
+                    {
+                        //if hp value alrady existed
+                        clientHealths[newRemote] = clientHealths[newRemote] - damageTaken;
+                    }
+                    else
+                    {
+                        //if client didnt have hp yet
+                        float startingHP = 100.0f;
+                        clientHealths.Add(newRemote, startingHP);
+                        clientHealths[newRemote] = clientHealths[newRemote] - damageTaken;
+                    }
+
+                    //send to client new update
+                    string healthUpdateConfirmation = $"HealthUpdate: {clientHealths[newRemote]}";
+                    newsock.SendTo(Encoding.ASCII.GetBytes(healthUpdateConfirmation), Encoding.ASCII.GetBytes(healthUpdateConfirmation).Length, SocketFlags.None, newRemote);
+                }
+                    SendData();
 
 
             }
