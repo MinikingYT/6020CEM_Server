@@ -15,11 +15,14 @@ namespace Week1Server
         static Dictionary<int, EndPoint> gameObjectOwners = new Dictionary<int, EndPoint>();
         static Dictionary<EndPoint, DateTime> clientHeartbeats = new Dictionary<EndPoint, DateTime>();
         static Dictionary<int, byte[]> gameState = new Dictionary<int, byte[]>(); //initialise this at the start of the program
-        static Socket newsock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp); //make a socket using UDP. The parameters passed are enums used by the constructor of Socket to configure the socket.
-        static IPEndPoint[] sender = new IPEndPoint[30];
-        static List<EndPoint> Remote = new List<EndPoint>();
-        static int lastAssignedGlobalID = 1; //I arbitrarily start at 12 so it’s easy to see if it’s working 
         static Dictionary<EndPoint, float> clientHealths = new Dictionary<EndPoint, float>();
+        static List<EndPoint> Remote = new List<EndPoint>();
+
+        static Socket newsock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp); //make a socket using UDP. The parameters passed are enums used by the constructor of Socket to configure the socket
+        static IPEndPoint[] sender = new IPEndPoint[30];
+
+        static int lastAssignedGlobalID = 1; //I arbitrarily start at 12 so it’s easy to see if it’s working 
+        
 
 
 
